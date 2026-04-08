@@ -28,5 +28,14 @@
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma",
+      "sharp",
+      "unrs-resolver",
+      "msgpackr-extract"
+    ]
   }
 }
