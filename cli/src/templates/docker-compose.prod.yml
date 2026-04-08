@@ -1,0 +1,60 @@
+services:
+  app:
+    image: ghcr.io/delivr/delivr-app:main
+    ports:
+      - "${API_PORT}:3000"
+    environment:
+      - DATABASE_URL=postgresql://delivr:${POSTGRES_PASSWORD}@postgres:5432/delivr
+      - REDIS_URL=redis://redis:6379
+      - SMTP_HOST=postfix
+      - SMTP_PORT=25
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      postfix:
+        condition: service_started
+    restart: unless-stopped
+
+  migrate:
+    image: ghcr.io/delivr/delivr-app:main
+    environment:
+      - DATABASE_URL=postgresql://delivr:${POSTGRES_PASSWORD}@postgres:5432/delivr
+    entrypoint: ["npx", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: delivr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: delivr
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U delivr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - ./data/redis:/data
+    restart: unless-stopped
+
+  postfix:
+    image: boky/postfix
+    environment:
+      - ALLOWED_SENDER_DOMAINS=${DOMAIN}
+      - HOSTNAME=${DOMAIN}
+    ports:
+      - "${SMTP_PORT}:25"
+      - "587:587"
+    volumes:
+      - ./data/dkim:/etc/opendkim/keys
+    restart: unless-stopped
