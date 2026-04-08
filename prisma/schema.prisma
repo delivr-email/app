@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Email {
+  id           String   @id
+  fromAddress  String
+  toAddresses  String[]
+  cc           String[]
+  bcc          String[]
+  replyTo      String?
+  subject      String
+  html         String?
+  textContent  String?
+  headers      Json?
+  status       String   @default("queued")
+  errorMessage String?
+  queuedAt     DateTime @default(now())
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  failedAt     DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([fromAddress])
+}
