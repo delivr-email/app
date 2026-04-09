@@ -8,23 +8,16 @@ services:
       - REDIS_URL=redis://redis:6379
       - SMTP_HOST=postfix
       - SMTP_PORT=25
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=http://localhost:${API_PORT}
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_started
       postfix:
         condition: service_started
     restart: unless-stopped
-
-  migrate:
-    image: ghcr.io/delivr/delivr-app:main
-    environment:
-      - DATABASE_URL=postgresql://delivr:${POSTGRES_PASSWORD}@postgres:5432/delivr
-    entrypoint: ["npx", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine

@@ -62,6 +62,7 @@ function generateFiles(dir: string, answers: InitAnswers): void {
 
   const vars: Record<string, string> = {
     apiPort: String(answers.apiPort),
+    authSecret: generatePassword() + generatePassword(),
   };
 
   if (answers.mode === "production") {
@@ -82,12 +83,6 @@ function generateFiles(dir: string, answers: InitAnswers): void {
 function launchStack(dir: string): void {
   console.log(chalk.blue("\nStarting services..."));
   execLive("docker compose up -d", { cwd: dir });
-
-  console.log(chalk.blue("\nWaiting for database to be ready..."));
-  execLive(
-    "docker compose exec migrate sh -c 'echo Database migrated'",
-    { cwd: dir }
-  );
 }
 
 function printLocalSummary(apiPort: number): void {

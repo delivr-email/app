@@ -36,6 +36,7 @@ function generateFiles(dir, answers) {
     mkdirSync(resolve(dir, "data"), { recursive: true });
     const vars = {
         apiPort: String(answers.apiPort),
+        authSecret: generatePassword() + generatePassword(),
     };
     if (answers.mode === "production") {
         vars.domain = answers.domain;
@@ -49,8 +50,6 @@ function generateFiles(dir, answers) {
 function launchStack(dir) {
     console.log(chalk.blue("\nStarting services..."));
     execLive("docker compose up -d", { cwd: dir });
-    console.log(chalk.blue("\nRunning database migrations..."));
-    execLive("docker compose exec app npx prisma migrate deploy", { cwd: dir });
 }
 function printLocalSummary(apiPort) {
     console.log(chalk.green(`
@@ -68,7 +67,7 @@ Done! Delivr is running.
 function printProdSummary(apiPort, domain) {
     let serverIp;
     try {
-        serverIp = exec("curl -s ifconfig.me");
+        serverIp = exec("curl -s ifconfig.me").trim();
     }
     catch {
         serverIp = "<SERVER_IP>";

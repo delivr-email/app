@@ -4,7 +4,21 @@ import { emailQueue } from "@/lib/queue";
 import { sendEmailSchema } from "@/lib/validation";
 import { createEmailId } from "@/lib/email-id";
 
+async function authenticateApiKey(request: NextRequest) {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+
+  const key = authHeader.slice(7);
+  const apiKey = await prisma.apiKey.findUnique({ where: { key } });
+  return apiKey;
+}
+
 export async function POST(request: NextRequest) {
+  const apiKey = await authenticateApiKey(request);
+  if (!apiKey) {
+    return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -40,6 +54,7 @@ export async function POST(request: NextRequest) {
       bcc: data.bcc ?? [],
       headers: data.headers,
       status: "queued",
+      userId: apiKey.userId,
     },
   });
 
