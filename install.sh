@@ -2,15 +2,15 @@
 set -e
 
 API_PORT="${1:-3000}"
-SMTP_PORT="${2:-25}"
+HOST_SMTP_PORT="${2:-25}"
 DOMAIN=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 
 echo ""
 echo "  Welcome to Delivr"
 echo ""
-echo "  Domain:    $DOMAIN"
+echo "  Server:    $DOMAIN"
 echo "  API port:  $API_PORT"
-echo "  SMTP port: $SMTP_PORT"
+echo "  SMTP port: $HOST_SMTP_PORT"
 echo ""
 
 # Check Docker
@@ -31,8 +31,8 @@ cd delivr
 # Write .env
 cat > .env <<EOF
 API_PORT=$API_PORT
+HOST_SMTP_PORT=$HOST_SMTP_PORT
 DOMAIN=$DOMAIN
-SMTP_PORT=$SMTP_PORT
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 EOF
@@ -87,7 +87,7 @@ services:
       ALLOWED_SENDER_DOMAINS: "${DOMAIN}"
       HOSTNAME: "${DOMAIN}"
     ports:
-      - "${SMTP_PORT}:25"
+      - "${HOST_SMTP_PORT}:25"
       - "587:587"
     volumes:
       - ./data/dkim:/etc/opendkim/keys
@@ -98,9 +98,6 @@ echo "Starting Delivr..."
 docker compose pull
 docker compose up -d
 
-# Get server IP
-SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || echo "<SERVER_IP>")
-
 echo ""
 echo "  Delivr is running!"
 echo ""
@@ -109,10 +106,10 @@ echo "  Dashboard: http://${DOMAIN}:${API_PORT}/dashboard"
 echo ""
 echo "  Configure DNS records:"
 echo ""
-echo "    TXT  @                -> v=spf1 ip4:${SERVER_IP} -all"
+echo "    TXT  @                -> v=spf1 ip4:${DOMAIN} -all"
 echo "    TXT  mail._domainkey  -> (run: cd delivr && docker compose exec postfix cat /etc/opendkim/keys/default.txt)"
 echo "    TXT  _dmarc           -> v=DMARC1; p=quarantine;"
-echo "    A    mail             -> ${SERVER_IP}"
+echo "    A    mail             -> ${DOMAIN}"
 echo ""
 echo "  To update later:"
 echo "    cd delivr && docker compose pull app && docker compose up -d"
