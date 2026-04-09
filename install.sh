@@ -12,11 +12,11 @@ if ! command -v docker &> /dev/null; then
   exit 1
 fi
 
-# Prompt for config
-read -p "Domain (e.g. mail.example.com): " DOMAIN
-read -p "API port [3000]: " API_PORT
+# Read from /dev/tty so it works with curl | bash
+read -p "Domain (e.g. mail.example.com): " DOMAIN < /dev/tty
+read -p "API port [3000]: " API_PORT < /dev/tty
 API_PORT=${API_PORT:-3000}
-read -p "SMTP port [25]: " SMTP_PORT
+read -p "SMTP port [25]: " SMTP_PORT < /dev/tty
 SMTP_PORT=${SMTP_PORT:-25}
 
 # Generate secrets
@@ -44,12 +44,12 @@ services:
     ports:
       - "${API_PORT}:3000"
     environment:
-      - DATABASE_URL=postgresql://delivr:${POSTGRES_PASSWORD}@postgres:5432/delivr
-      - REDIS_URL=redis://redis:6379
-      - SMTP_HOST=postfix
-      - SMTP_PORT=25
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=http://localhost:${API_PORT}
+      DATABASE_URL: postgresql://delivr:${POSTGRES_PASSWORD}@postgres:5432/delivr
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: postfix
+      SMTP_PORT: "25"
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: http://localhost:${API_PORT}
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,8 +83,8 @@ services:
   postfix:
     image: boky/postfix
     environment:
-      - ALLOWED_SENDER_DOMAINS=${DOMAIN}
-      - HOSTNAME=${DOMAIN}
+      ALLOWED_SENDER_DOMAINS: ${DOMAIN}
+      HOSTNAME: ${DOMAIN}
     ports:
       - "${SMTP_PORT}:25"
       - "587:587"
