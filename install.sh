@@ -1,18 +1,9 @@
 #!/bin/bash
 set -e
 
-DOMAIN="${1:-}"
-API_PORT="${2:-3000}"
-SMTP_PORT="${3:-25}"
-
-if [ -z "$DOMAIN" ]; then
-  echo ""
-  echo "  Usage: bash install.sh <domain> [api_port] [smtp_port]"
-  echo ""
-  echo "  Example: bash install.sh mail.example.com 3000 25"
-  echo ""
-  exit 1
-fi
+API_PORT="${1:-3000}"
+SMTP_PORT="${2:-25}"
+DOMAIN=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 
 echo ""
 echo "  Welcome to Delivr"
