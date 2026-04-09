@@ -1,16 +1,8 @@
 #!/bin/bash
 set -e
 
-API_PORT="${1:-3000}"
-HOST_SMTP_PORT="${2:-25}"
-DOMAIN=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-
 echo ""
 echo "  Welcome to Delivr"
-echo ""
-echo "  Server:    $DOMAIN"
-echo "  API port:  $API_PORT"
-echo "  SMTP port: $HOST_SMTP_PORT"
 echo ""
 
 # Check Docker
@@ -19,6 +11,18 @@ if ! command -v docker &> /dev/null; then
   echo "  curl -fsSL https://get.docker.com | sh"
   exit 1
 fi
+
+# Detect server IP
+SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+
+# Interactive prompts
+echo "  Detected server IP: $SERVER_IP"
+echo ""
+read -p "  API port [3000]: " API_PORT
+API_PORT=${API_PORT:-3000}
+read -p "  SMTP port [25]: " SMTP_PORT
+SMTP_PORT=${SMTP_PORT:-25}
+echo ""
 
 # Generate secrets
 POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
@@ -31,8 +35,8 @@ cd delivr
 # Write .env
 cat > .env <<EOF
 API_PORT=$API_PORT
-HOST_SMTP_PORT=$HOST_SMTP_PORT
-DOMAIN=$DOMAIN
+HOST_SMTP_PORT=$SMTP_PORT
+DOMAIN=$SERVER_IP
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 EOF
@@ -94,22 +98,15 @@ services:
     restart: unless-stopped
 COMPOSE
 
-echo "Starting Delivr..."
+echo "  Starting services..."
 docker compose pull
 docker compose up -d
 
 echo ""
 echo "  Delivr is running!"
 echo ""
-echo "  API: http://${DOMAIN}:${API_PORT}"
-echo "  Dashboard: http://${DOMAIN}:${API_PORT}/dashboard"
-echo ""
-echo "  Configure DNS records:"
-echo ""
-echo "    TXT  @                -> v=spf1 ip4:${DOMAIN} -all"
-echo "    TXT  mail._domainkey  -> (run: cd delivr && docker compose exec postfix cat /etc/opendkim/keys/default.txt)"
-echo "    TXT  _dmarc           -> v=DMARC1; p=quarantine;"
-echo "    A    mail             -> ${DOMAIN}"
+echo "  API:       http://${SERVER_IP}:${API_PORT}"
+echo "  Dashboard: http://${SERVER_IP}:${API_PORT}/dashboard"
 echo ""
 echo "  To update later:"
 echo "    cd delivr && docker compose pull app && docker compose up -d"
