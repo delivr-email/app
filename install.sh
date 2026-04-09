@@ -13,7 +13,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Detect server IP
-SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+SERVER_IP=$(curl -4s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
 
 # Interactive prompts
 echo "  Detected server IP: $SERVER_IP"
