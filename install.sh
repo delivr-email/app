@@ -1,8 +1,25 @@
 #!/bin/bash
 set -e
 
+DOMAIN="${1:-}"
+API_PORT="${2:-3000}"
+SMTP_PORT="${3:-25}"
+
+if [ -z "$DOMAIN" ]; then
+  echo ""
+  echo "  Usage: bash install.sh <domain> [api_port] [smtp_port]"
+  echo ""
+  echo "  Example: bash install.sh mail.example.com 3000 25"
+  echo ""
+  exit 1
+fi
+
 echo ""
 echo "  Welcome to Delivr"
+echo ""
+echo "  Domain:    $DOMAIN"
+echo "  API port:  $API_PORT"
+echo "  SMTP port: $SMTP_PORT"
 echo ""
 
 # Check Docker
@@ -11,13 +28,6 @@ if ! command -v docker &> /dev/null; then
   echo "  curl -fsSL https://get.docker.com | sh"
   exit 1
 fi
-
-# Read from /dev/tty so it works with curl | bash
-read -p "Domain (e.g. mail.example.com): " DOMAIN < /dev/tty
-read -p "API port [3000]: " API_PORT < /dev/tty
-API_PORT=${API_PORT:-3000}
-read -p "SMTP port [25]: " SMTP_PORT < /dev/tty
-SMTP_PORT=${SMTP_PORT:-25}
 
 # Generate secrets
 POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
@@ -29,11 +39,11 @@ cd delivr
 
 # Write .env
 cat > .env <<EOF
-API_PORT=${API_PORT}
-DOMAIN=${DOMAIN}
-SMTP_PORT=${SMTP_PORT}
-POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+API_PORT=$API_PORT
+DOMAIN=$DOMAIN
+SMTP_PORT=$SMTP_PORT
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 EOF
 
 # Write docker-compose.yml
@@ -44,12 +54,12 @@ services:
     ports:
       - "${API_PORT}:3000"
     environment:
-      DATABASE_URL: postgresql://delivr:${POSTGRES_PASSWORD}@postgres:5432/delivr
-      REDIS_URL: redis://redis:6379
-      SMTP_HOST: postfix
+      DATABASE_URL: "postgresql://delivr:${POSTGRES_PASSWORD}@postgres:5432/delivr"
+      REDIS_URL: "redis://redis:6379"
+      SMTP_HOST: "postfix"
       SMTP_PORT: "25"
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: http://localhost:${API_PORT}
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET}"
+      BETTER_AUTH_URL: "http://localhost:${API_PORT}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,7 +73,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: delivr
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_DB: delivr
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
@@ -83,8 +93,8 @@ services:
   postfix:
     image: boky/postfix
     environment:
-      ALLOWED_SENDER_DOMAINS: ${DOMAIN}
-      HOSTNAME: ${DOMAIN}
+      ALLOWED_SENDER_DOMAINS: "${DOMAIN}"
+      HOSTNAME: "${DOMAIN}"
     ports:
       - "${SMTP_PORT}:25"
       - "587:587"
@@ -93,7 +103,6 @@ services:
     restart: unless-stopped
 COMPOSE
 
-echo ""
 echo "Starting Delivr..."
 docker compose pull
 docker compose up -d
@@ -110,7 +119,7 @@ echo ""
 echo "  Configure DNS records:"
 echo ""
 echo "    TXT  @                -> v=spf1 ip4:${SERVER_IP} -all"
-echo "    TXT  mail._domainkey  -> (run: docker compose exec postfix cat /etc/opendkim/keys/default.txt)"
+echo "    TXT  mail._domainkey  -> (run: cd delivr && docker compose exec postfix cat /etc/opendkim/keys/default.txt)"
 echo "    TXT  _dmarc           -> v=DMARC1; p=quarantine;"
 echo "    A    mail             -> ${SERVER_IP}"
 echo ""
